@@ -111,7 +111,6 @@
 
   <audio id="endSound">
     <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
-    Ihr Browser unterstützt keine Töne.
   </audio>
 
   <script>
@@ -137,9 +136,14 @@
     function formatTime(minuten) {
       const sign = minuten < 0 ? "-" : "";
       minuten = Math.abs(minuten);
-      const h = Math.floor(minuten / 60);
-      const m = minuten % 60;
-      return `${sign}${h}:${m.toString().padStart(2, '0')}`;
+      let h = Math.floor(minuten / 60);
+      let m = minuten % 60;
+      let tagHinweis = "";
+      if (h >= 24) {
+        tagHinweis = " (am nächsten Tag)";
+        h = h % 24;
+      }
+      return `${sign}${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}${tagHinweis}`;
     }
 
     function berechne() {
@@ -156,17 +160,17 @@
       let arbeitszeit, gehen, differenz, result = "";
 
       if (zielUeberstunden) {
-        gehen = kommen + sollGesamt + pausenMinuten;
+        gehen = (kommen + sollGesamt + pausenMinuten) % 1440;
         arbeitszeit = sollGesamt;
         differenz = 0;
 
         result += `
-          Geplante Gehen-Zeit: <strong>${formatTime(gehen)}</strong><br>
+          Geplante Gehen-Zeit: <strong>${formatTime(kommen + sollGesamt + pausenMinuten)}</strong><br>
           Arbeitszeit (inkl. Überstunden): ${formatTime(arbeitszeit)} Std<br>
           <em>Gehen-Zeit wurde automatisch berechnet.</em>
         `;
       } else if (gehenEingabe !== null) {
-        arbeitszeit = gehenEingabe - kommen - pausenMinuten;
+        arbeitszeit = (gehenEingabe - kommen + 1440) % 1440 - pausenMinuten;
         differenz = arbeitszeit - (sollStunden * 60);
 
         result += `
@@ -192,26 +196,26 @@
 
       const zielUeberstunden = parseTime(document.getElementById("ziel").value || "0:00");
       const sollGesamt = sollStunden * 60 + zielUeberstunden;
-      zielMinutenGlobal = kommen + sollGesamt + pausenMinuten;
+      zielMinutenGlobal = (kommen + sollGesamt + pausenMinuten) % 1440;
 
       countdownInterval = setInterval(() => {
         const now = new Date();
         const aktuelleMinuten = now.getHours() * 60 + now.getMinutes();
-        const verbleibend = zielMinutenGlobal - aktuelleMinuten;
-        const startBisZiel = zielMinutenGlobal - kommen;
+        let restMinuten = (zielMinutenGlobal - aktuelleMinuten + 1440) % 1440;
 
-        if (verbleibend <= 0) {
+        if (restMinuten <= 0) {
           document.getElementById("countdown").innerText = "Feierabend! Du darfst gehen!";
           document.getElementById("progressBar").style.width = "100%";
           document.getElementById("endSound").play();
           clearInterval(countdownInterval);
         } else {
-          const h = Math.floor(verbleibend / 60);
-          const m = verbleibend % 60;
+          const h = Math.floor(restMinuten / 60);
+          const m = restMinuten % 60;
           document.getElementById("countdown").innerText =
-            `Noch ${h} Std ${m.toString().padStart(2, '0')} Min bis Feierabend`;
+            `Verbleibende Zeit bis Feierabend: ${h}:${m.toString().padStart(2, '0')} Std`;
 
-          const fortschritt = ((aktuelleMinuten - kommen) / startBisZiel) * 100;
+          const startBisZiel = (zielMinutenGlobal - kommen + 1440) % 1440;
+          const fortschritt = ((aktuelleMinuten - kommen + 1440) % 1440) / startBisZiel * 100;
           document.getElementById("progressBar").style.width = Math.min(fortschritt, 100) + "%";
         }
       }, 1000);
