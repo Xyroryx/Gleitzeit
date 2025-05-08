@@ -1,206 +1,182 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Überstunden-Rechner</title>
+
+  <!-- Favicon für Browser und Home-Screen -->
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="apple-touch-icon" href="favicon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Überstunden" />
+
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 20px;
-      background: #f9f9f9;
+      padding: 1rem;
+      background: #f4f4f4;
+      color: #333;
     }
 
     .container {
       max-width: 400px;
       margin: auto;
-      background: #fff;
-      padding: 30px;
+      background: white;
+      padding: 2rem;
       border-radius: 10px;
-      box-shadow: 0 0 10px #ccc;
-      text-align: center;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
     }
 
     h1 {
-      font-size: 24px;
-      margin-bottom: 20px;
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      margin-top: 1rem;
     }
 
     input {
       width: 100%;
-      padding: 10px;
-      font-size: 16px;
-      margin-bottom: 15px;
-      border: 1px solid #ccc;
+      padding: 0.5rem;
+      margin-top: 0.2rem;
       border-radius: 6px;
-      text-align: center;
+      border: 1px solid #ccc;
+      font-size: 1rem;
     }
 
     button {
+      margin-top: 1.2rem;
+      width: 100%;
+      padding: 0.75rem;
       background: #28a745;
       color: white;
-      padding: 10px;
       border: none;
       border-radius: 6px;
-      font-size: 16px;
+      font-size: 1.1rem;
       cursor: pointer;
-      margin-bottom: 15px;
-      width: 100%;
+    }
+
+    button:hover {
+      background: #218838;
+    }
+
+    .result {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #f1f1f1;
+      border-radius: 6px;
     }
 
     .countdown {
       font-weight: bold;
-      font-size: 18px;
-      color: #c00;
-      margin: 10px 0;
-    }
-
-    .progress {
-      width: 100%;
-      background: #e0e0e0;
-      height: 10px;
-      border-radius: 5px;
-      margin-bottom: 10px;
-    }
-
-    .progress-bar {
-      height: 10px;
-      background: #28a745;
-      width: 0%;
-      border-radius: 5px;
-    }
-
-    .output {
-      font-size: 15px;
-      text-align: left;
-      margin-top: 15px;
-      background: #f0f0f0;
-      padding: 15px;
-      border-radius: 8px;
+      margin-top: 0.5rem;
+      color: #d9534f;
+      text-align: center;
     }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h1>Überstunden-Rechner</h1>
 
-<div class="container">
-  <h1>Überstunden-Rechner</h1>
+    <label for="start">Kommen (HH:MM)</label>
+    <input type="time" id="start" />
 
-  <div id="currentTime"></div>
+    <button onclick="setNow()">Jetzt als Kommen setzen</button>
 
-  <label for="startTime">Kommen (HH:MM)</label>
-  <input type="time" id="startTime">
+    <div id="remaining" class="countdown"></div>
 
-  <button onclick="setCurrentTime()">Jetzt als Kommen setzen</button>
+    <label for="end">Gehen (optional, wird ignoriert wenn Überstunden eingegeben)</label>
+    <input type="time" id="end" />
 
-  <div class="countdown" id="countdown"></div>
-  <div class="progress">
-    <div class="progress-bar" id="progressBar"></div>
+    <label for="overtime">Gewünschte Überstunden (z. B. 1:30)</label>
+    <input type="text" id="overtime" placeholder="HH:MM" />
+
+    <button onclick="calculate()">Berechnen</button>
+
+    <div id="output" class="result"></div>
   </div>
 
-  <label for="endTime">Gehen (optional, wird ignoriert wenn Überstunden eingegeben)</label>
-  <input type="time" id="endTime">
+  <script>
+    const breakMinutes = 50;
+    const dailyWorkMinutes = 7 * 60 + breakMinutes;
 
-  <label for="overtime">Gewünschte Überstunden (z. B. 1:30)</label>
-  <input type="text" id="overtime" placeholder="HH:MM">
+    let countdownInterval;
 
-  <button onclick="calculate()">Berechnen</button>
-
-  <div class="output" id="result"></div>
-</div>
-
-<audio id="endSound" src="https://www.soundjay.com/buttons/sounds/button-10.mp3" preload="auto"></audio>
-
-<script>
-  let zielMinutenGlobal = null;
-  let kommen = null;
-  let countdownInterval = null;
-
-  function setCurrentTime() {
-    const now = new Date();
-    const hh = now.getHours().toString().padStart(2, '0');
-    const mm = now.getMinutes().toString().padStart(2, '0');
-    document.getElementById("startTime").value = `${hh}:${mm}`;
-  }
-
-  function calculate() {
-    const pauseMinuten = 50;
-    const sollArbeitszeit = 7 * 60;
-
-    const kommenStr = document.getElementById("startTime").value;
-    if (!kommenStr) return;
-
-    const [kh, km] = kommenStr.split(":").map(Number);
-    kommen = kh * 60 + km;
-
-    let zielMinuten = kommen + sollArbeitszeit + pauseMinuten;
-
-    const overtimeStr = document.getElementById("overtime").value;
-    if (overtimeStr) {
-      const [oh = 0, om = 0] = overtimeStr.split(":").map(x => parseInt(x) || 0);
-      zielMinuten += oh * 60 + om;
-    } else {
-      const gehenStr = document.getElementById("endTime").value;
-      if (gehenStr) {
-        const [gh, gm] = gehenStr.split(":").map(Number);
-        const gehen = gh * 60 + gm;
-        const gearbeitet = gehen - kommen - pauseMinuten;
-        zielMinuten = gehen;
-      }
+    function setNow() {
+      const now = new Date();
+      const hh = now.getHours().toString().padStart(2, '0');
+      const mm = now.getMinutes().toString().padStart(2, '0');
+      document.getElementById('start').value = `${hh}:${mm}`;
+      calculate();
     }
 
-    zielMinutenGlobal = zielMinuten;
-    updateCountdown();
+    function parseTime(str) {
+      const parts = str.split(":");
+      return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    }
 
-    if (countdownInterval) clearInterval(countdownInterval);
-    countdownInterval = setInterval(updateCountdown, 1000);
+    function formatTime(minutes) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    }
 
-    const gehh = Math.floor(zielMinuten / 60) % 24;
-    const gehm = zielMinuten % 60;
-    const arbeitGesamt = zielMinuten - kommen - pauseMinuten;
-    const ah = Math.floor(arbeitGesamt / 60);
-    const am = arbeitGesamt % 60;
-
-    document.getElementById("result").innerHTML = `
-      Geplante Gehen-Zeit: <b>${gehh.toString().padStart(2, '0')}:${gehm.toString().padStart(2, '0')}</b><br>
-      Arbeitszeit (inkl. Überstunden): ${ah}:${am.toString().padStart(2, '0')} Std<br>
-      <em>Gehen-Zeit wurde automatisch berechnet.</em>
-    `;
-  }
-
-  function updateCountdown() {
-    if (zielMinutenGlobal == null || kommen == null) return;
-
-    const now = new Date();
-    const aktuelleMinuten = now.getHours() * 60 + now.getMinutes();
-
-    const restMinuten = zielMinutenGlobal - aktuelleMinuten;
-
-    if (restMinuten <= 0) {
-      document.getElementById("countdown").innerText = "Feierabend! Du darfst gehen!";
-      document.getElementById("progressBar").style.width = "100%";
-      document.getElementById("endSound").play();
+    function calculate() {
       clearInterval(countdownInterval);
-    } else {
-      const h = Math.floor(restMinuten / 60);
-      const m = restMinuten % 60;
-      document.getElementById("countdown").innerText = `Verbleibende Zeit bis Feierabend: ${h}:${m.toString().padStart(2, '0')} Std`;
 
-      const startBisZiel = zielMinutenGlobal - kommen;
-      const fortschritt = ((aktuelleMinuten - kommen) / startBisZiel) * 100;
-      document.getElementById("progressBar").style.width = Math.min(fortschritt, 100) + "%";
+      const startVal = document.getElementById('start').value;
+      if (!startVal) return;
+
+      const startMinutes = parseTime(startVal);
+      const overtimeVal = document.getElementById('overtime').value;
+      const endVal = document.getElementById('end').value;
+
+      let totalWork = dailyWorkMinutes;
+
+      if (overtimeVal) {
+        totalWork += parseTime(overtimeVal);
+      }
+
+      let endMinutes;
+      if (overtimeVal) {
+        endMinutes = startMinutes + totalWork;
+      } else if (endVal) {
+        endMinutes = parseTime(endVal);
+        totalWork = endMinutes - startMinutes;
+      } else {
+        endMinutes = startMinutes + dailyWorkMinutes;
+      }
+
+      const workTime = endMinutes - startMinutes;
+      const outputText = `
+        <b>Geplante Gehen-Zeit:</b> ${formatTime(endMinutes)}<br/>
+        Arbeitszeit (inkl. Überstunden): ${Math.floor(workTime / 60)}:${(workTime % 60).toString().padStart(2, '0')} Std
+        <br/><em>${overtimeVal ? 'Gehen-Zeit wurde automatisch berechnet.' : 'Endzeit manuell verwendet.'}</em>
+      `;
+
+      document.getElementById('output').innerHTML = outputText;
+
+      // Start Countdown
+      countdownInterval = setInterval(() => updateCountdown(endMinutes), 1000);
+      updateCountdown(endMinutes);
     }
-  }
 
-  function updateLiveTime() {
-    const now = new Date();
-    const hh = now.getHours().toString().padStart(2, '0');
-    const mm = now.getMinutes().toString().padStart(2, '0');
-    document.getElementById("currentTime").innerText = `${hh}:${mm}`;
-  }
-
-  setInterval(updateLiveTime, 1000);
-  updateLiveTime();
-</script>
+    function updateCountdown(targetMinutes) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const diff = targetMinutes - currentMinutes;
+      const remainingText =
+        diff > 0
+          ? `Verbleibende Zeit bis Feierabend: ${formatTime(diff)} Std`
+          : `Feierabend erreicht`;
+      document.getElementById('remaining').textContent = remainingText;
+    }
+  </script>
 </body>
 </html>
