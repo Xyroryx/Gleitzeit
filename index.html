@@ -67,6 +67,20 @@
       margin-top: 0.5rem;
       text-align: center;
     }
+    .progress-container {
+      margin-top: 1rem;
+      background-color: #e0e0e0;
+      border-radius: 8px;
+      height: 20px;
+      width: 100%;
+    }
+    .progress-bar {
+      height: 100%;
+      background-color: #4CAF50;
+      border-radius: 8px;
+      width: 0%;
+      transition: width 1s linear;
+    }
   </style>
 </head>
 <body>
@@ -80,6 +94,10 @@
 
     <div id="countdown">Noch keine Kommen-Zeit gesetzt.</div>
 
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
     <label for="gehen">Gehen (optional, wird ignoriert wenn Überstunden eingegeben)</label>
     <input type="time" id="gehen" />
 
@@ -91,10 +109,16 @@
     <div class="result" id="ergebnis">Bitte gib deine Zeiten ein.</div>
   </div>
 
+  <audio id="endSound">
+    <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
+    Ihr Browser unterstützt keine Töne.
+  </audio>
+
   <script>
     const sollStunden = 7;
     const pausenMinuten = 50;
     let countdownInterval = null;
+    let zielMinutenGlobal = null;
 
     function setCurrentTime() {
       const now = new Date();
@@ -168,19 +192,27 @@
 
       const zielUeberstunden = parseTime(document.getElementById("ziel").value || "0:00");
       const sollGesamt = sollStunden * 60 + zielUeberstunden;
-      const zielZeit = kommen + sollGesamt + pausenMinuten;
+      zielMinutenGlobal = kommen + sollGesamt + pausenMinuten;
 
       countdownInterval = setInterval(() => {
         const now = new Date();
         const aktuelleMinuten = now.getHours() * 60 + now.getMinutes();
-        const verbleibend = zielZeit - aktuelleMinuten;
+        const verbleibend = zielMinutenGlobal - aktuelleMinuten;
+        const startBisZiel = zielMinutenGlobal - kommen;
 
         if (verbleibend <= 0) {
-          document.getElementById("countdown").innerText = "Arbeitszeit erfüllt!";
+          document.getElementById("countdown").innerText = "Feierabend! Du darfst gehen!";
+          document.getElementById("progressBar").style.width = "100%";
+          document.getElementById("endSound").play();
           clearInterval(countdownInterval);
         } else {
+          const h = Math.floor(verbleibend / 60);
+          const m = verbleibend % 60;
           document.getElementById("countdown").innerText =
-            "Verbleibende Zeit bis Feierabend: " + formatTime(verbleibend) + " Std";
+            `Noch ${h} Std ${m.toString().padStart(2, '0')} Min bis Feierabend`;
+
+          const fortschritt = ((aktuelleMinuten - kommen) / startBisZiel) * 100;
+          document.getElementById("progressBar").style.width = Math.min(fortschritt, 100) + "%";
         }
       }, 1000);
     }
