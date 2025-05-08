@@ -1,225 +1,206 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Überstunden-Rechner</title>
   <style>
     body {
-      font-family: "Segoe UI", sans-serif;
-      background: linear-gradient(145deg, #f0f0f0, #e0e0e0);
+      font-family: Arial, sans-serif;
       margin: 0;
-      padding: 2rem;
-      display: flex;
-      justify-content: center;
+      padding: 20px;
+      background: #f9f9f9;
     }
+
     .container {
+      max-width: 400px;
+      margin: auto;
       background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      padding: 2rem;
-      max-width: 500px;
-      width: 100%;
-    }
-    h1 {
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
       text-align: center;
-      color: #333;
     }
-    label {
-      display: block;
-      margin-top: 1rem;
-      font-weight: bold;
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
     }
+
     input {
       width: 100%;
-      padding: 0.6rem;
-      margin-top: 0.3rem;
-      border-radius: 6px;
+      padding: 10px;
+      font-size: 16px;
+      margin-bottom: 15px;
       border: 1px solid #ccc;
-      font-size: 1rem;
-    }
-    button {
-      margin-top: 1rem;
-      padding: 0.8rem;
-      width: 100%;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
       border-radius: 6px;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    .result {
-      margin-top: 1.5rem;
-      font-size: 1.1rem;
-      color: #333;
-      background-color: #f9f9f9;
-      padding: 1rem;
-      border-radius: 8px;
-    }
-    #countdown {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: #d32f2f;
-      margin-top: 0.5rem;
       text-align: center;
     }
-    .progress-container {
-      margin-top: 1rem;
-      background-color: #e0e0e0;
-      border-radius: 8px;
-      height: 20px;
+
+    button {
+      background: #28a745;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 15px;
       width: 100%;
     }
+
+    .countdown {
+      font-weight: bold;
+      font-size: 18px;
+      color: #c00;
+      margin: 10px 0;
+    }
+
+    .progress {
+      width: 100%;
+      background: #e0e0e0;
+      height: 10px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+
     .progress-bar {
-      height: 100%;
-      background-color: #4CAF50;
-      border-radius: 8px;
+      height: 10px;
+      background: #28a745;
       width: 0%;
-      transition: width 1s linear;
+      border-radius: 5px;
+    }
+
+    .output {
+      font-size: 15px;
+      text-align: left;
+      margin-top: 15px;
+      background: #f0f0f0;
+      padding: 15px;
+      border-radius: 8px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Überstunden-Rechner</h1>
 
-    <label for="kommen">Kommen (HH:MM)</label>
-    <input type="time" id="kommen" onchange="startCountdown()" />
+<div class="container">
+  <h1>Überstunden-Rechner</h1>
 
-    <button onclick="setCurrentTime()">Jetzt als Kommen setzen</button>
+  <div id="currentTime"></div>
 
-    <div id="countdown">Noch keine Kommen-Zeit gesetzt.</div>
+  <label for="startTime">Kommen (HH:MM)</label>
+  <input type="time" id="startTime">
 
-    <div class="progress-container">
-      <div class="progress-bar" id="progressBar"></div>
-    </div>
+  <button onclick="setCurrentTime()">Jetzt als Kommen setzen</button>
 
-    <label for="gehen">Gehen (optional, wird ignoriert wenn Überstunden eingegeben)</label>
-    <input type="time" id="gehen" />
-
-    <label for="ziel">Gewünschte Überstunden (z. B. 1:30)</label>
-    <input type="text" id="ziel" placeholder="HH:MM" onchange="startCountdown()" />
-
-    <button onclick="berechne()">Berechnen</button>
-
-    <div class="result" id="ergebnis">Bitte gib deine Zeiten ein.</div>
+  <div class="countdown" id="countdown"></div>
+  <div class="progress">
+    <div class="progress-bar" id="progressBar"></div>
   </div>
 
-  <audio id="endSound">
-    <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
-  </audio>
+  <label for="endTime">Gehen (optional, wird ignoriert wenn Überstunden eingegeben)</label>
+  <input type="time" id="endTime">
 
-  <script>
-    const sollStunden = 7;
-    const pausenMinuten = 50;
-    let countdownInterval = null;
-    let zielMinutenGlobal = null;
+  <label for="overtime">Gewünschte Überstunden (z. B. 1:30)</label>
+  <input type="text" id="overtime" placeholder="HH:MM">
 
-    function setCurrentTime() {
-      const now = new Date();
-      const stunde = now.getHours().toString().padStart(2, '0');
-      const minute = now.getMinutes().toString().padStart(2, '0');
-      document.getElementById('kommen').value = `${stunde}:${minute}`;
-      startCountdown();
-    }
+  <button onclick="calculate()">Berechnen</button>
 
-    function parseTime(timeStr) {
-      if (!timeStr || !timeStr.includes(":")) return null;
-      const [h, m] = timeStr.split(":").map(Number);
-      return h * 60 + m;
-    }
+  <div class="output" id="result"></div>
+</div>
 
-    function formatTime(minuten) {
-      const sign = minuten < 0 ? "-" : "";
-      minuten = Math.abs(minuten);
-      let h = Math.floor(minuten / 60);
-      let m = minuten % 60;
-      let tagHinweis = "";
-      if (h >= 24) {
-        tagHinweis = " (am nächsten Tag)";
-        h = h % 24;
+<audio id="endSound" src="https://www.soundjay.com/buttons/sounds/button-10.mp3" preload="auto"></audio>
+
+<script>
+  let zielMinutenGlobal = null;
+  let kommen = null;
+  let countdownInterval = null;
+
+  function setCurrentTime() {
+    const now = new Date();
+    const hh = now.getHours().toString().padStart(2, '0');
+    const mm = now.getMinutes().toString().padStart(2, '0');
+    document.getElementById("startTime").value = `${hh}:${mm}`;
+  }
+
+  function calculate() {
+    const pauseMinuten = 50;
+    const sollArbeitszeit = 7 * 60;
+
+    const kommenStr = document.getElementById("startTime").value;
+    if (!kommenStr) return;
+
+    const [kh, km] = kommenStr.split(":").map(Number);
+    kommen = kh * 60 + km;
+
+    let zielMinuten = kommen + sollArbeitszeit + pauseMinuten;
+
+    const overtimeStr = document.getElementById("overtime").value;
+    if (overtimeStr) {
+      const [oh = 0, om = 0] = overtimeStr.split(":").map(x => parseInt(x) || 0);
+      zielMinuten += oh * 60 + om;
+    } else {
+      const gehenStr = document.getElementById("endTime").value;
+      if (gehenStr) {
+        const [gh, gm] = gehenStr.split(":").map(Number);
+        const gehen = gh * 60 + gm;
+        const gearbeitet = gehen - kommen - pauseMinuten;
+        zielMinuten = gehen;
       }
-      return `${sign}${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}${tagHinweis}`;
     }
 
-    function berechne() {
-      const kommen = parseTime(document.getElementById("kommen").value);
-      const gehenEingabe = parseTime(document.getElementById("gehen").value);
-      const zielUeberstunden = parseTime(document.getElementById("ziel").value);
+    zielMinutenGlobal = zielMinuten;
+    updateCountdown();
 
-      if (kommen === null) {
-        document.getElementById("ergebnis").innerText = "Bitte Kommen-Zeit eingeben.";
-        return;
-      }
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownInterval = setInterval(updateCountdown, 1000);
 
-      const sollGesamt = sollStunden * 60 + (zielUeberstunden || 0);
-      let arbeitszeit, gehen, differenz, result = "";
+    const gehh = Math.floor(zielMinuten / 60) % 24;
+    const gehm = zielMinuten % 60;
+    const arbeitGesamt = zielMinuten - kommen - pauseMinuten;
+    const ah = Math.floor(arbeitGesamt / 60);
+    const am = arbeitGesamt % 60;
 
-      if (zielUeberstunden) {
-        gehen = (kommen + sollGesamt + pausenMinuten) % 1440;
-        arbeitszeit = sollGesamt;
-        differenz = 0;
+    document.getElementById("result").innerHTML = `
+      Geplante Gehen-Zeit: <b>${gehh.toString().padStart(2, '0')}:${gehm.toString().padStart(2, '0')}</b><br>
+      Arbeitszeit (inkl. Überstunden): ${ah}:${am.toString().padStart(2, '0')} Std<br>
+      <em>Gehen-Zeit wurde automatisch berechnet.</em>
+    `;
+  }
 
-        result += `
-          Geplante Gehen-Zeit: <strong>${formatTime(kommen + sollGesamt + pausenMinuten)}</strong><br>
-          Arbeitszeit (inkl. Überstunden): ${formatTime(arbeitszeit)} Std<br>
-          <em>Gehen-Zeit wurde automatisch berechnet.</em>
-        `;
-      } else if (gehenEingabe !== null) {
-        arbeitszeit = (gehenEingabe - kommen + 1440) % 1440 - pausenMinuten;
-        differenz = arbeitszeit - (sollStunden * 60);
+  function updateCountdown() {
+    if (zielMinutenGlobal == null || kommen == null) return;
 
-        result += `
-          Tatsächliche Arbeitszeit: ${formatTime(arbeitszeit)} Std<br>
-          Sollarbeitszeit: ${formatTime(sollStunden * 60)} Std<br>
-          <strong>Differenz: ${formatTime(differenz)} Std</strong>
-        `;
-      } else {
-        result = "Bitte entweder Gehen-Zeit oder gewünschte Überstunden eingeben.";
-      }
+    const now = new Date();
+    const aktuelleMinuten = now.getHours() * 60 + now.getMinutes();
 
-      document.getElementById("ergebnis").innerHTML = result;
-    }
+    const restMinuten = zielMinutenGlobal - aktuelleMinuten;
 
-    function startCountdown() {
+    if (restMinuten <= 0) {
+      document.getElementById("countdown").innerText = "Feierabend! Du darfst gehen!";
+      document.getElementById("progressBar").style.width = "100%";
+      document.getElementById("endSound").play();
       clearInterval(countdownInterval);
+    } else {
+      const h = Math.floor(restMinuten / 60);
+      const m = restMinuten % 60;
+      document.getElementById("countdown").innerText = `Verbleibende Zeit bis Feierabend: ${h}:${m.toString().padStart(2, '0')} Std`;
 
-      const kommen = parseTime(document.getElementById("kommen").value);
-      if (kommen === null) {
-        document.getElementById("countdown").innerText = "Noch keine Kommen-Zeit gesetzt.";
-        return;
-      }
-
-      const zielUeberstunden = parseTime(document.getElementById("ziel").value || "0:00");
-      const sollGesamt = sollStunden * 60 + zielUeberstunden;
-      zielMinutenGlobal = (kommen + sollGesamt + pausenMinuten) % 1440;
-
-      countdownInterval = setInterval(() => {
-        const now = new Date();
-        const aktuelleMinuten = now.getHours() * 60 + now.getMinutes();
-        let restMinuten = (zielMinutenGlobal - aktuelleMinuten + 1440) % 1440;
-
-        if (restMinuten <= 0) {
-          document.getElementById("countdown").innerText = "Feierabend! Du darfst gehen!";
-          document.getElementById("progressBar").style.width = "100%";
-          document.getElementById("endSound").play();
-          clearInterval(countdownInterval);
-        } else {
-          const h = Math.floor(restMinuten / 60);
-          const m = restMinuten % 60;
-          document.getElementById("countdown").innerText =
-            `Verbleibende Zeit bis Feierabend: ${h}:${m.toString().padStart(2, '0')} Std`;
-
-          const startBisZiel = (zielMinutenGlobal - kommen + 1440) % 1440;
-          const fortschritt = ((aktuelleMinuten - kommen + 1440) % 1440) / startBisZiel * 100;
-          document.getElementById("progressBar").style.width = Math.min(fortschritt, 100) + "%";
-        }
-      }, 1000);
+      const startBisZiel = zielMinutenGlobal - kommen;
+      const fortschritt = ((aktuelleMinuten - kommen) / startBisZiel) * 100;
+      document.getElementById("progressBar").style.width = Math.min(fortschritt, 100) + "%";
     }
-  </script>
+  }
+
+  function updateLiveTime() {
+    const now = new Date();
+    const hh = now.getHours().toString().padStart(2, '0');
+    const mm = now.getMinutes().toString().padStart(2, '0');
+    document.getElementById("currentTime").innerText = `${hh}:${mm}`;
+  }
+
+  setInterval(updateLiveTime, 1000);
+  updateLiveTime();
+</script>
 </body>
 </html>
