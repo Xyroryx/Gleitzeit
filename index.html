@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Überstunden-Rechner</title>
   <style>
     body {
@@ -65,15 +65,17 @@
 <body>
   <div class="container">
     <h1>Überstunden-Rechner</h1>
+
     <label for="kommen">Kommen (HH:MM)</label>
-    <input type="time" id="kommen">
+    <input type="time" id="kommen" />
+
     <button onclick="setCurrentTime()">Jetzt als Kommen setzen</button>
 
-    <label for="gehen">Gehen (HH:MM)</label>
-    <input type="time" id="gehen">
+    <label for="gehen">Gehen (optional, wird ignoriert wenn Überstunden eingegeben)</label>
+    <input type="time" id="gehen" />
 
     <label for="ziel">Gewünschte Überstunden (z. B. 1:30)</label>
-    <input type="text" id="ziel" placeholder="HH:MM">
+    <input type="text" id="ziel" placeholder="HH:MM" />
 
     <button onclick="berechne()">Berechnen</button>
 
@@ -92,7 +94,7 @@
     }
 
     function parseTime(timeStr) {
-      if (!timeStr.includes(":")) return null;
+      if (!timeStr || !timeStr.includes(":")) return null;
       const [h, m] = timeStr.split(":").map(Number);
       return h * 60 + m;
     }
@@ -107,23 +109,41 @@
 
     function berechne() {
       const kommen = parseTime(document.getElementById("kommen").value);
-      const gehen = parseTime(document.getElementById("gehen").value);
-      const zielUeberstunden = parseTime(document.getElementById("ziel").value || "0:00");
+      const gehenEingabe = parseTime(document.getElementById("gehen").value);
+      const zielUeberstunden = parseTime(document.getElementById("ziel").value);
 
-      if (kommen === null || gehen === null) {
-        document.getElementById("ergebnis").innerText = "Bitte Kommen- und Gehen-Zeit korrekt eingeben.";
+      if (kommen === null) {
+        document.getElementById("ergebnis").innerText = "Bitte Kommen-Zeit eingeben.";
         return;
       }
 
-      const arbeitszeit = gehen - kommen - pausenMinuten;
-      const sollZeit = sollStunden * 60 + zielUeberstunden;
-      const differenz = arbeitszeit - sollZeit;
+      const sollGesamt = sollStunden * 60 + (zielUeberstunden || 0);
+      let arbeitszeit, gehen, differenz, result = "";
 
-      const result = `
-        Tatsächliche Arbeitszeit: ${formatTime(arbeitszeit)} Std<br>
-        Sollzeit inkl. Überstunden: ${formatTime(sollZeit)} Std<br>
-        <strong>Differenz: ${formatTime(differenz)} Std</strong>
-      `;
+      if (zielUeberstunden) {
+        // Berechne Gehen-Zeit auf Basis von Kommen + Soll + Pause
+        gehen = kommen + sollGesamt + pausenMinuten;
+        arbeitszeit = sollGesamt;
+        differenz = 0;
+
+        result += `
+          Geplante Gehen-Zeit: <strong>${formatTime(gehen)}</strong><br>
+          Arbeitszeit (inkl. Überstunden): ${formatTime(arbeitszeit)} Std<br>
+          <em>Gehen-Zeit wurde automatisch berechnet.</em>
+        `;
+      } else if (gehenEingabe !== null) {
+        arbeitszeit = gehenEingabe - kommen - pausenMinuten;
+        differenz = arbeitszeit - (sollStunden * 60);
+
+        result += `
+          Tatsächliche Arbeitszeit: ${formatTime(arbeitszeit)} Std<br>
+          Sollarbeitszeit: ${formatTime(sollStunden * 60)} Std<br>
+          <strong>Differenz: ${formatTime(differenz)} Std</strong>
+        `;
+      } else {
+        result = "Bitte entweder Gehen-Zeit oder gewünschte Überstunden eingeben.";
+      }
+
       document.getElementById("ergebnis").innerHTML = result;
     }
   </script>
